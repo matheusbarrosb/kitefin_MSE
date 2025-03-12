@@ -1,4 +1,4 @@
-run_population_model = function(catch, biomass_ts, pars, year, stochastic = TRUE) {
+run_population_model = function(catch, curr_biomass, pars, year, stochastic = TRUE) {
   
   if (stochastic == TRUE) {
     r = rnorm(1, pars$r[1], pars$r[2])
@@ -7,8 +7,7 @@ run_population_model = function(catch, biomass_ts, pars, year, stochastic = TRUE
     r = pars$r
     K = pars$K
   }
-  
-  curr_biomass = biomass_ts[year, 2]
+
   proj_biomass = curr_biomass + r*curr_biomass*(1 - (curr_biomass/K)) - catch
   
   return(proj_biomass)

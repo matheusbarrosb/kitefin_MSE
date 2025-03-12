@@ -1,4 +1,4 @@
-sim_surveys = function(biomass_ts, pars, stochastic = TRUE, year) {
+sim_surveys = function(curr_biomass, pars, stochastic = TRUE) {
   
   # get catchabilities
   if (stochastic == TRUE) {
@@ -12,9 +12,6 @@ sim_surveys = function(biomass_ts, pars, stochastic = TRUE, year) {
     q3 = pars$q[3,1]
     q4 = pars$q[4,1]
   }
-  
-  # get last year's biomass
-  curr_biomass = as.numeric(biomass_ts[dim(biomass_ts)[1], 2])
   
   # gillnet
   I1 = q1 * curr_biomass
@@ -33,8 +30,3 @@ sim_surveys = function(biomass_ts, pars, stochastic = TRUE, year) {
   return(output)
    
 }
-# 
-# par_list = c("r", "K", "MSYs", "q")
-# pars = extract_pars(fit = fit, pars = par_list)
-# 
-# sim_surveys(biomass_ts = biomass, pars = pars, year = 49, stochastic = FALSE)

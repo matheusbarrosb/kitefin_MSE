@@ -24,9 +24,9 @@ update_input_data = function(input_data, year, catch, surveys) {
   } else {
     
     input_data$obsI[[5]] = c(input_data$obsI[[5]], surveys$I1)
-    input_data$obsI[[6]] = c(input_data$obsI[[6]], surveys$I1)
-    input_data$obsI[[7]] = c(input_data$obsI[[7]], surveys$I1)
-    input_data$obsI[[8]] = c(input_data$obsI[[8]], surveys$I1)
+    input_data$obsI[[6]] = c(input_data$obsI[[6]], surveys$I2)
+    input_data$obsI[[7]] = c(input_data$obsI[[7]], surveys$I3)
+    input_data$obsI[[8]] = c(input_data$obsI[[8]], surveys$I4)
     
     input_data$timeI[[5]] = c(input_data$timeI[[5]], input_data$timeI[[5]][year-1] + 1) 
     input_data$timeI[[6]] = c(input_data$timeI[[6]], input_data$timeI[[6]][year-1] + 1) 
