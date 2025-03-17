@@ -1,5 +1,7 @@
 run_simulation = function(settings, data_directory) {
   
+  # check settings object
+  
   # load-in data
   data_directory = file.path(here::here(), "data/")
   input_data     = make_input_data(data_directory = data_directory)
@@ -13,11 +15,13 @@ run_simulation = function(settings, data_directory) {
   biomass      = data.frame()
   est_biomass  = data.frame()
   true_biomass = matrix(NA, settings$sim_years, 3)
+  real_catch   = matrix(NA, settings$sim_years, 3)
   
   for (t in 1:settings$sim_years) {
     
     if (t == 1) { # observed data only
       
+      ## ESTIMATION MODEL ------------------------------------------------------
       # fit model
       fit1 = fit.spict(input_data, verbose = FALSE)
       
@@ -33,9 +37,11 @@ run_simulation = function(settings, data_directory) {
       
       # define next year's catch
       catch = get_catch(biomass_ts = est_biomass, hcr_option = "1", thresholds = thresholds, max_harvest = 0.1, year = dim(est_biomass)[1])
+      real_catch[t,2] = catch$catch # store realized catch
       
+      ## OPERATING MODEL -------------------------------------------------------
       # project population forward after fishery
-      true_biomass[t,2]   = run_population_model(catch = catch$catch, pars = pars, year = dim(est_biomass)[1], curr_biomass = est_biomass[dim(est_biomass)[1], 2])
+      true_biomass[t,2]   = run_population_model(catch = catch$catch, pars = pars, year = dim(est_biomass)[1], curr_biomass = est_biomass[dim(est_biomass)[1], 2], stochastic = FALSE) # stochastic = FALSE in the conditioning so the model starts off at the last estimated biomass
       
       new_biomass        = data.frame(as.numeric(est_biomass[dim(est_biomass)[1],1]) + t, true_biomass[t,2], 1)
       names(new_biomass) = names(est_biomass)
@@ -45,12 +51,11 @@ run_simulation = function(settings, data_directory) {
       surveys = sim_surveys(curr_biomass = biomass[dim(biomass)[1],2], pars = pars, stochastic = TRUE)
        
       # update data
-      input_data = update_input_data(input_data = input_data, year = t, surveys = surveys, catch = catch)
+      input_data = update_input_data(input_data = input_data, year = 1, surveys = surveys, catch = catch)
       
     } else { # repeat for t > 1, estimation model uses observed + simulated data
       
       ## ESTIMATION MODEL ------------------------------------------------------
-      
       # run assessment model
       fit = fit.spict(input_data, verbose = FALSE)
       
@@ -64,12 +69,12 @@ run_simulation = function(settings, data_directory) {
       # pars = extract_pars(fit = fit, pars = par_list)
 
       # define next year's catch (harvest control rule)
-      catch = get_catch(biomass_ts = est, hcr_option = "1", thresholds = thresholds, max_harvest = 0.1, year = dim(est)[1])
+      catch = get_catch(biomass_ts = est, hcr_option = "1", thresholds = thresholds, max_harvest = settings$max_harvest, year = dim(est)[1])
+      real_catch[t,2] = catch$catch # store realized catch
       
       ## OPERATING MODEL -------------------------------------------------------
-      
       # run population model
-      true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, year = dim(est)[1], curr_biomass = true_biomass[t-1,2])
+      true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, year = dim(est)[1], curr_biomass = true_biomass[t-1,2], stochastic = FALSE)
  
       # run survey model
       surveys = sim_surveys(curr_biomass = true_biomass[t,2], pars = pars, stochastic = TRUE)
@@ -87,7 +92,9 @@ run_simulation = function(settings, data_directory) {
   true_biomass[,3] = rep(0, nrow(true_biomass))
   true_biomass     = as.data.frame(true_biomass)
   names(true_biomass) = c("year", "est", "sd")
+  true_biomass     = true_biomass %>% mutate(type = "Simulated")
   
+  est_biomass    = est_biomass %>% mutate(type = "Observed")
   biomass_output = rbind(est_biomass, true_biomass)
   
   biomass_output$year = 1972:(2020 + settings$sim_years)

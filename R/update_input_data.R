@@ -1,7 +1,7 @@
 update_input_data = function(input_data, year, catch, surveys) {
   
   input_data$obsC  = c(input_data$obsC, catch$catch)
-  input_data$timeC = c(input_data$timeC, input_data$timeC[length(input_data$timeC)] + year)
+  input_data$timeC = c(input_data$timeC, input_data$timeC[length(input_data$timeC)] + 1)
   input_data$dtc   = c(input_data$dtc, 1)
   
   if (year == 1) {

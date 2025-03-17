@@ -1,6 +1,7 @@
 make_input_data = function(data_directory) {
   
   raw_data = read.csv(paste0(data_directory, "gata.csv")) # read-in data
+  raw_data[6,5] = NA
   
   catch_years = min(raw_data$timeC):max(raw_data$timeC)
   n_years     = length(catch_years)
@@ -44,6 +45,8 @@ make_input_data = function(data_directory) {
   )
   
   # setup priors
+  input_data$logalpha         = c(0,0,0)
+  input_data$logbeta          = c(0,0,0)
   input_data$priors$logn      = c(log(2), 0.5, 1)
   input_data$priors$logsdc    = c(log(0.2)- 0.5*0.5^2, 0.5, 1)
   input_data$priors$logsdb    = c(log(0.07)- 0.5*0.5^2, 0.5, 1)
