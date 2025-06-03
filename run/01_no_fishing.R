@@ -29,7 +29,7 @@ thresholds = list(
   upper = 12000 # does not matter when h = 0
 )
 
-settings = list(sim_years   = 60,
+settings = list(sim_years   = 75,
                 par_list    = c("r", "K", "q"),
                 thresholds  = thresholds,
                 max_harvest = 0,
@@ -50,7 +50,7 @@ thresholds = list(
   upper = 12000
 )
 
-settings = list(sim_years   = 60,
+settings = list(sim_years   = 75,
                 par_list    = c("r", "K", "q"),
                 thresholds  = thresholds,
                 max_harvest = 0,
@@ -87,7 +87,7 @@ biomass_df = data.frame(
   mu    = colMeans(biomass_mat, na.rm = TRUE),
   sigma = apply(biomass_mat, 2, sd)
 ) %>%
-  mutate(phase = c(rep("Observed",49), rep("Simulated", 60))) %>%
+  mutate(phase = c(rep("Observed",49), rep("Simulated", settings$sim_years))) %>%
   mutate(year = 1:(settings$sim_years + 49)+1972-1)
 
 # save dataframe output
