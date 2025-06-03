@@ -8,15 +8,15 @@ run_simulation_2 = function(settings, data_directory, stochastic = TRUE, display
   input_data     = make_input_data(data_directory = data_directory)
   
   # get settings
-  par_list   = settings$par_list
-  thresholds = settings$thresholds
+  par_list    = settings$par_list
+  thresholds  = settings$thresholds
   
   # allocate containers
   est          = data.frame()
   biomass      = data.frame()
   est_biomass  = data.frame()
   true_biomass = matrix(NA, settings$sim_years, 3)
-  real_catch   = matrix(NA, settings$sim_years, 1)
+  real_catch   = matrix(NA, settings$sim_years, 2)
   
   if (estimation) {
   
@@ -31,21 +31,22 @@ run_simulation_2 = function(settings, data_directory, stochastic = TRUE, display
         # get biomass estimates
         est_biomass = get.par('logB', fit1, exp = TRUE)[,c("est","cv")]
         est_biomass = as.data.frame(est_biomass)
-        est_biomass = rownames_to_column(est_biomass)
-        names(est_biomass) = c("year", "est", "cv")
+        est_biomass = rownames_to_column(est_biomass); names(est_biomass) = c("year", "est", "cv")
         est_biomass = est_biomass %>% filter(year == as.integer(year))
         
         # extract parameters
         pars = extract_pars(fit = fit1, pars = par_list)
         
         # define next year's catch
-        catch = get_catch(curr_biomass = est_biomass[49, 2], hcr_option = settings$hcr_option, thresholds = thresholds, max_harvest = 0.1)
+        catch = get_catch(curr_biomass = est_biomass[49, 2], hcr_option = settings$hcr_option, thresholds = settings$thresholds, max_harvest = settings$max_harvest)
         real_catch[t,1] = catch$catch # store realized catch
+        real_catch[t,2] = catch$h
         
         ## OPERATING MODEL -------------------------------------------------------
         # project population forward after fishery
-        true_biomass[t,2]  = run_population_model(catch = catch$catch, pars = pars, curr_biomass = est_biomass[dim(est_biomass)[1], 2], stochastic = FALSE) # stochastic = FALSE in the conditioning so the model starts off at the last estimated biomass
-        
+        # stochastic = FALSE in the conditioning so the model starts off at the last estimated biomass
+        true_biomass[t,2]  = run_population_model(catch = catch$catch, pars = pars, curr_biomass = est_biomass[dim(est_biomass)[1], 2], stochastic = FALSE) 
+
         new_biomass        = data.frame(as.numeric(est_biomass[dim(est_biomass)[1],1]) + t, true_biomass[t,2], 1)
         names(new_biomass) = names(est_biomass)
         biomass            = rbind(est_biomass, new_biomass)
@@ -76,13 +77,14 @@ run_simulation_2 = function(settings, data_directory, stochastic = TRUE, display
         # pars = extract_pars(fit = fit, pars = par_list)
         
         # define next year's catch (harvest control rule)
-        catch = get_catch(curr_biomass = est[49 + t, 2], hcr_option = settings$hcr_option, thresholds = thresholds, max_harvest = settings$max_harvest)
+        catch = get_catch(curr_biomass = est[49 + t, 2], hcr_option = settings$hcr_option, thresholds = settings$thresholds, max_harvest = settings$max_harvest)
         real_catch[t,1] = catch$catch # store realized catch
+        real_catch[t,2] = catch$h
         
         ## OPERATING MODEL -------------------------------------------------------
         # run population model
         if (stochastic == FALSE) {
-          true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, curr_biomass = est[dim(est)[1],2], stochastic = FALSE)
+          true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, curr_biomass = true_biomass[t-1,2], stochastic = FALSE)
         } else {
           true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, curr_biomass = true_biomass[t-1,2], stochastic = TRUE)
         }
@@ -125,6 +127,7 @@ run_simulation_2 = function(settings, data_directory, stochastic = TRUE, display
         # 3638.181 is the estimated 2020 biomass
         catch = get_catch(curr_biomass = 3638.181, hcr_option = settings$hcr_option, thresholds = thresholds, max_harvest = settings$max_harvest)
         real_catch[t,1] = catch$catch # store realized catch
+        real_catch[t,2] = catch$h
         
         ## OPERATING MODEL -------------------------------------------------------
         # project population forward after fishery
@@ -149,6 +152,7 @@ run_simulation_2 = function(settings, data_directory, stochastic = TRUE, display
         # define next year's catch (harvest control rule)
         catch = get_catch(curr_biomass = true_biomass[t-1,2], hcr_option = settings$hcr_option, thresholds = thresholds, max_harvest = settings$max_harvest)
         real_catch[t,1] = catch$catch # store realized catch
+        real_catch[t,2] = catch$h
         
         ## OPERATING MODEL -------------------------------------------------------
         # run population model

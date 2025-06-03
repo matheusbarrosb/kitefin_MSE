@@ -13,7 +13,7 @@ library(tidyr)
 library(PNWColors)
 library(doFuture)
 
-##### Standard two-step scenario #####
+##### Hyper-precautionary two-step scenario #####
 
 # load-in functions ------------------------------------------------------------
 function_directory = file.path(here::here(), "R/")
@@ -25,19 +25,19 @@ for (i in 1:length(function_files)) {
 # set up simulation ------------------------------------------------------------
 n_sims = 200
 
-Bmsy = 5542.577
+Bmsy = 5542.577 # from stochastic reference points
 Fmsy = 0.027491
-Umsy = 1 - exp(-Fmsy)
+Umsy = 1 - exp(-Fmsy) # converted from instantaneous to harvest rate
 
 thresholds = list(
-  lower = 0.5 * Bmsy,
-  upper = Bmsy
+  lower = 1.2 * Bmsy,
+  upper = 1.5 * Bmsy
 )
 
 settings = list(sim_years   = 75,
                 par_list    = c("r", "K", "q"),
                 thresholds  = thresholds,
-                max_harvest = 0.9 * Umsy, # 1 - exp(Fmsy)
+                max_harvest = Umsy, # 1 - exp(Fmsy)
                 hcr_option  = "1")
 
 ## get base model outputs
@@ -47,6 +47,19 @@ input_data     = make_input_data(data_directory = data_directory)
 
 # fit
 fit = fit.spict(input_data, verbose = TRUE, dbg = 0);plot(fit)
+
+# deterministic simulations ----------------------------------------------------
+det = list()
+for (i in 1:n_sims) {
+
+  det[[i]] = run_simulation_2(
+    settings       = settings,
+    data_directory = data_directory,
+    estimation     = FALSE,
+    base_model_fit = fit
+  )
+  
+}
 
 # run --------------------------------------------------------------------------
 
@@ -75,7 +88,7 @@ message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sim
 
 # save simulation data
 res_data_dir = file.path(here::here(), "res", "data", "rds/")
-saveRDS(output, file = paste0(res_data_dir, "03_twostep.rds"))
+saveRDS(output, file = paste0(res_data_dir, "05_hyper_precaut_twostep.rds"))
 
 # process output ---------------------------------------------------------------
 biomass_list = list()
@@ -93,7 +106,7 @@ biomass_df = data.frame(
 
 # save dataframe output
 res_data_dir = file.path(here::here(), "res", "data", "dfs/")
-write.csv(biomass_df, file = paste(res_data_dir, "03_twostep.csv"))
+write.csv(biomass_df, file = paste(res_data_dir, "05_hyper_precaut_twostep.csv"))
 
 # plot -------------------------------------------------------------------------
 Bmsy = 5542.576768
@@ -104,15 +117,15 @@ biomass_df %>%
   geom_line(linewidth = 1.2, aes(color = phase)) +
   geom_vline(xintercept = 2020.5, linewidth = 0.9, linetype = "dashed", color = "red") +
   geom_hline(yintercept = Bmsy, linetype = "dashed") +
-  geom_ribbon(aes(ymin = mu - sigma, ymax = mu + sigma), alpha = 0.2) +
+  geom_ribbon(aes(ymin = mu - 2*sigma, ymax = mu + 2*sigma), alpha = 0.2) +
   custom_theme() +
   theme(legend.position = "none") +
   xlab("Year") +
   ylab("Biomass (t)") +
   annotate(geom="text", x = 1977, y = 6000, label = "B[msy]", parse = TRUE) +
   scale_color_manual(values = pnw_palette("Winter", 2)) +
-  labs(title = "Two-step HCR")
+  labs(title = "Hyper-precautionary two-step HCR")
 
 fig_dir = file.path(here::here(), "res", "figures")
-ggsave("twostep.pdf", path = fig_dir)
+ggsave("hyper_precaut_twostep.pdf", path = fig_dir)
 
