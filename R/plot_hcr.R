@@ -1,7 +1,7 @@
-plot_hcr = function(hcr_option, max_harvest, thresholds) {
+plot_hcr = function(hcr_option, max_harvest, thresholds, title) {
   
   h = rep(NA, 10000)
-  b = seq(3000, 15000, length.out = 10000)
+  b = seq(3000, 20000, length.out = 10000)
   
   if (hcr_option == "1") {
     
@@ -36,20 +36,18 @@ plot_hcr = function(hcr_option, max_harvest, thresholds) {
     }
       
   } else {
-    
-    stop("hcr_options must be 1 or 2")
-    
+    stop("Invalid HCR option. Choose '1' or '2'.")
   }
 
   # PLOTTING
-  plot(b, h, type = "l", xlab = "Biomass (t)", ylab = "Harvest rate", main = paste0("Harvest Control Rule ", hcr_option), col = "blue")
+  plot(b, h, type = "l", xlab = "Biomass (t)", ylab = "Harvest rate", main = paste0(title), col = "blue")
       
 }  
 
 
 # Run the function
 
-#plot_hcr(hcr_option = "1", max_harvest = 0.02, thresholds = list(lower = 7000, upper = 12000))
+#plot_hcr(hcr_option = "1", max_harvest = 0.02, thresholds = list(lower = 0.8*7000, upper = 1.2*12000))
 
 
 

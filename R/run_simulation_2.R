@@ -1,4 +1,4 @@
-run_simulation_2 = function(settings, data_directory, stochastic = TRUE, display_progress = TRUE, estimation = FALSE, base_model_fit) {
+run_simulation_2 = function(settings, data_directory, stochastic = TRUE, display_progress = TRUE, estimation = FALSE, propag.uncert = TRUE, base_model_fit) {
   
   # check settings object
   if (!is.list(settings)) stop("settings must be a list")
@@ -45,7 +45,7 @@ run_simulation_2 = function(settings, data_directory, stochastic = TRUE, display
         ## OPERATING MODEL -------------------------------------------------------
         # project population forward after fishery
         # stochastic = FALSE in the conditioning so the model starts off at the last estimated biomass
-        true_biomass[t,2]  = run_population_model(catch = catch$catch, pars = pars, curr_biomass = est_biomass[dim(est_biomass)[1], 2], stochastic = FALSE) 
+        true_biomass[t,2]  = run_population_model(catch = catch$catch, pars = pars, curr_biomass = est_biomass[dim(est_biomass)[1], 2], propag.uncert = FALSE, formulaion = settngs$formulation) 
 
         new_biomass        = data.frame(as.numeric(est_biomass[dim(est_biomass)[1],1]) + t, true_biomass[t,2], 1)
         names(new_biomass) = names(est_biomass)
@@ -83,10 +83,10 @@ run_simulation_2 = function(settings, data_directory, stochastic = TRUE, display
         
         ## OPERATING MODEL -------------------------------------------------------
         # run population model
-        if (stochastic == FALSE) {
-          true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, curr_biomass = true_biomass[t-1,2], stochastic = FALSE)
+        if (propag.uncert == FALSE) {
+          true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, curr_biomass = true_biomass[t-1,2], propag.uncert = FALSE, formulaion = settngs$formulation)
         } else {
-          true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, curr_biomass = true_biomass[t-1,2], stochastic = TRUE)
+          true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, curr_biomass = true_biomass[t-1,2], propag.uncert = TRUE, formulaion = settngs$formulation)
         }
         
         # run survey model
@@ -131,7 +131,7 @@ run_simulation_2 = function(settings, data_directory, stochastic = TRUE, display
         
         ## OPERATING MODEL -------------------------------------------------------
         # project population forward after fishery
-        true_biomass[t,2]  = run_population_model(catch = catch$catch, pars = pars, curr_biomass = 3638.181, stochastic = FALSE) # stochastic = FALSE in the conditioning so the model starts off at the last estimated biomass
+        true_biomass[t,2]  = run_population_model(catch = catch$catch, pars = pars, curr_biomass = 3638.181, propag.uncert = FALSE, formulaion = settngs$formulation) # stochastic = FALSE in the conditioning so the model starts off at the last estimated biomass
         
         new_biomass        = data.frame(as.numeric(est_biomass[dim(est_biomass)[1],1]) + t, true_biomass[t,2], 1)
         names(new_biomass) = names(est_biomass)
@@ -157,9 +157,9 @@ run_simulation_2 = function(settings, data_directory, stochastic = TRUE, display
         ## OPERATING MODEL -------------------------------------------------------
         # run population model
         if (stochastic == FALSE) {
-          true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, curr_biomass = est[dim(est)[1],2], stochastic = FALSE)
+          true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, curr_biomass = est[dim(est)[1],2], propag.uncert = FALSE, formulaion = settngs$formulation)
         } else {
-          true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, curr_biomass = true_biomass[t-1,2], stochastic = TRUE)
+          true_biomass[t,2] = run_population_model(catch = catch$catch, pars = pars, curr_biomass = true_biomass[t-1,2], propag.uncert = TRUE, formulaion = settngs$formulation)
         }
         
         # run survey model

@@ -23,19 +23,6 @@ for (i in 1:length(function_files)) {
 }
 
 # set up simulation ------------------------------------------------------------
-n_sims = 500
-
-thresholds = list(
-  lower = 7000,
-  upper = 12000 # does not matter when h = 0
-)
-
-settings = list(sim_years   = 60,
-                par_list    = c("r", "K", "q"),
-                thresholds  = thresholds,
-                max_harvest = 0,
-                hcr_option  = "1")
-
 ## get base model outputs
 # make input data
 data_directory = file.path(here::here(), "data/")
@@ -43,26 +30,29 @@ input_data     = make_input_data(data_directory = data_directory)
 
 # fit
 fit = fit.spict(input_data, verbose = TRUE, dbg = 0)
+plot(fit)
 
 # run --------------------------------------------------------------------------
+n_sims = 1000
 
 thresholds = list(
-  lower = 7000,
+  lower = 7000,     # irrelevant when h = 0
   upper = 12000
 )
 
-settings = list(sim_years   = 60,
-                par_list    = c("r", "K", "q"),
+settings = list(sim_years   = 75,
+                par_list    = c("r", "K", "q", "m", "n", "sdb"),
                 thresholds  = thresholds,
                 max_harvest = 0,
-                hcr_option  = "1")
+                hcr_option  = "1",
+                estimation  = FALSE)
 
 output = list()
 for (i in 1:n_sims) {
   
   output[[i]] = tryCatch({
     
-      run_simulation_2(settings = settings, data_directory = data_directory, estimation = FALSE, base_model_fit = fit)
+      run_simulation_2(settings = settings, data_directory = data_directory, estimation = settings$estimation, base_model_fit = fit, stochastic = TRUE, propag.uncert = TRUE)
     
     }, error = function(e) {
       
@@ -88,7 +78,7 @@ biomass_df = data.frame(
   mu    = colMeans(biomass_mat, na.rm = TRUE),
   sigma = apply(biomass_mat, 2, sd)
 ) %>%
-  mutate(phase = c(rep("Observed",49), rep("Simulated", 60))) %>%
+  mutate(phase = c(rep("Observed",49), rep("Simulated", settings$sim_years))) %>%
   mutate(year = 1:(settings$sim_years + 49)+1972-1)
 
 # save dataframe output

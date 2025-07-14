@@ -29,7 +29,7 @@ thresholds = list(
   upper = 1 
 )
 
-settings = list(sim_years   = 60,
+settings = list(sim_years   = 75,
                 par_list    = c("r", "K", "q"),
                 thresholds  = thresholds,
                 max_harvest = 0.01, # 1 - exp(Fmsy)
