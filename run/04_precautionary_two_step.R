@@ -23,8 +23,6 @@ for (i in 1:length(function_files)) {
 }
 
 # set up simulation ------------------------------------------------------------
-n_sims = 100
-
 Bmsy = 5542.577 # from stochastic reference points
 Fmsy = 0.027491
 Umsy = 1 - exp(-Fmsy) # converted from instantaneous to harvest rate

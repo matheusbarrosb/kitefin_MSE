@@ -23,8 +23,6 @@ for (i in 1:length(function_files)) {
 }
 
 # set up simulation ------------------------------------------------------------
-n_sims = 200
-
 Bmsy = 5542.577
 Fmsy = 0.027491
 Umsy = 1 - exp(-Fmsy)
@@ -34,7 +32,9 @@ thresholds = list(
   upper = Bmsy
 )
 
-settings = list(sim_years   = 75,
+settings = list(formulation = "discrete",
+                n_sims      = 300,
+                sim_years   = 75,
                 par_list    = c("r", "K", "q"),
                 thresholds  = thresholds,
                 max_harvest = 0.9 * Umsy, # 1 - exp(Fmsy)
@@ -72,6 +72,8 @@ output = foreach(i = 1:n_sims) %dofuture% {
   })
 }
 message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sims, "simulations successfully."))
+
+# End of simulations -----------------------------------------------------------
 
 # save simulation data
 res_data_dir = file.path(here::here(), "res", "data", "rds/")

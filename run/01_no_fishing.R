@@ -33,14 +33,15 @@ fit = fit.spict(input_data, verbose = TRUE, dbg = 0)
 plot(fit)
 
 # run --------------------------------------------------------------------------
-n_sims = 1000
+n_sims = 100
 
 thresholds = list(
   lower = 7000,     # irrelevant when h = 0
   upper = 12000
 )
 
-settings = list(sim_years   = 75,
+settings = list(formulation = "continuous",
+                sim_years   = 75,
                 par_list    = c("r", "K", "q", "m", "n", "sdb"),
                 thresholds  = thresholds,
                 max_harvest = 0,
@@ -79,7 +80,7 @@ biomass_df = data.frame(
   sigma = apply(biomass_mat, 2, sd)
 ) %>%
   mutate(phase = c(rep("Observed",49), rep("Simulated", settings$sim_years))) %>%
-  mutate(year = 1:(settings$sim_years + 49)+1972-1)
+  mutate(year = 1:(settings$sim_years + 49)+1972-1); print(biomass_df)
 
 # save dataframe output
 res_data_dir = file.path(here::here(), "res", "data", "dfs/")
@@ -87,6 +88,7 @@ write.csv(biomass_df, file = paste(res_data_dir, "01_nofishing.csv"))
 
 # plot -------------------------------------------------------------------------
 Bmsy = 5542.576768
+K    = extract_pars(fit, c("K"))$K[1]
 
 biomass_df %>%
   
@@ -94,12 +96,14 @@ biomass_df %>%
   geom_line(linewidth = 1.2, aes(color = phase)) +
   geom_vline(xintercept = 2020.5, linewidth = 0.9, linetype = "dashed", color = "red") +
   geom_hline(yintercept = Bmsy, linetype = "dashed") +
+  geom_hline(yintercept = K, linetype = "dashed") +
   geom_ribbon(aes(ymin = mu - 4*sigma, ymax = mu + 4*sigma), alpha = 0.2) +
   custom_theme() +
   theme(legend.position = "none") +
   xlab("Year") +
   ylab("Biomass (t)") +
-  annotate(geom="text", x = 1977, y = 6000, label = "B[msy]", parse = TRUE) +
+  annotate(geom="text", x = 1977, y = 6000, label = "italic(B[msy])", parse = TRUE) +
+  annotate(geom="text", x = 1977, y = 12600, label = "italic(K)", parse = TRUE) +
   scale_color_manual(values = pnw_palette("Winter", 2)) +
   labs(title = "No fishing scenario")
 

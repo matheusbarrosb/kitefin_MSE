@@ -7,7 +7,3 @@ extract_pars = function(fit, pars) {
   return(ext_pars)
     
 }
-
-
-#pars = c("r", "K", "MSYs", "q")
-#a = extract_pars(fit = fit, pars = pars)
