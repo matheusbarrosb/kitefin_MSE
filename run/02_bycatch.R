@@ -22,84 +22,173 @@ for (i in 1:length(function_files)) {
 }
 
 # set up simulation ------------------------------------------------------------
-n_sims = 500
+n_sims = 100
+
+Bmsy = 5914.2806440
+
+lwr = Bmsy
+upr = 1.5*Bmsy
 
 thresholds = list(
-  lower = 1,
-  upper = 1 
+  lower = lwr,
+  upper = upr 
 )
 
-settings = list(sim_years   = 75,
-                par_list    = c("r", "K", "q"),
-                thresholds  = thresholds,
-                max_harvest = 0.01, # 1 - exp(Fmsy)
-                hcr_option  = "1")
-
-## get base model outputs
-# make input data
-data_directory = file.path(here::here(), "data/")
-input_data     = make_input_data(data_directory = data_directory)
-
-# fit
-fit = fit.spict(input_data, verbose = TRUE, dbg = 0)
-
-# run --------------------------------------------------------------------------
+h = as.numeric(seq(0.005, 0.05, by = 0.005))
+settings = list()
+output_list = list()
 output = list()
-for (i in 1:n_sims) {
-  
-  output[[i]] = tryCatch({
-    
-    run_simulation_2(settings = settings, data_directory = data_directory, estimation = FALSE, base_model_fit = fit)
-    
-  }, error = function(e) {
-    
-    message(paste("Error in simulation", i, ":", e$message))
-    
-  }
-  )
-  
-}; message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sims, "simulations successfully."))
+for (k in 1:length(h)) {
 
-# save simulation data
+  settings[[k]] = list(formulation = "continuous",
+                       sim_years   = 75,
+                       par_list    = c("r", "K", "q", "m", "n", "sdb"),
+                       thresholds  = thresholds,
+                       max_harvest = h[k], 
+                       hcr_option  = "1",
+                       estimation  = FALSE)
+  
+  for (i in 1:n_sims) {
+    
+    output[[i]] = tryCatch({
+      
+      run_simulation_2(settings = settings[[k]], data_directory = data_directory, estimation = settings[[k]]$estimation, base_model_fit = fit)
+      
+    }, error = function(e) {
+      
+      message(paste("Error in simulation", i, ":", e$message))
+      
+    }
+    )
+    
+  }; message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sims, "simulations successfully."))
+  
+  output_list[[k]] = output; names(output_list)[k] = paste0("h_", h[k])
+  
+}
+
+# save .rds file
 res_data_dir = file.path(here::here(), "res", "data", "rds/")
-saveRDS(output, file = paste0(res_data_dir, "02_bycatch.rds"))
+saveRDS(output_list, file = paste0(res_data_dir, "bycatch_dt.rds"))
 
 # process output ---------------------------------------------------------------
-biomass_list = list()
-for (i in 1:n_sims) biomass_list[[i]] = output[[i]]$biomass$absolute_biomass
+if (!exists("output_list")) {
+  res_data_dir = file.path(here::here(), "res", "data", "rds/")
+  output_list  = readRDS(file = paste0(res_data_dir, "bycatch_dt.rds"))
+}
 
-biomass_list = Filter(Negate(is.null), biomass_list)
-biomass_mat  = do.call(rbind, biomass_list)
+biomass_df_list = list()
+catch_df_list   = list()
+for (i in 1:length(output_list)) {
+  biomass      = lapply(output_list[[i]], function(x) x$biomass$absolute_biomass)
+  biomass_mat  = do.call(rbind, biomass)
+  biomass_mean = apply(biomass_mat, 2, mean)
+  biomass_sd   = apply(biomass_mat, 2, sd)
+  
+  catch       = lapply(output_list[[i]], function(x) x$catch[,1])
+  catch_mat   = do.call(rbind, catch)
+  catch_mean  = apply(catch_mat, 2, mean)
+  catch_sd    = apply(catch_mat, 2, sd)
+  
+  biomass_df = data.frame(
+    year    = seq(1972, 2020 + settings[[i]]$sim_years),
+    biomass = biomass_mean,
+    sd      = biomass_sd
+  )
+  
+  catch_df = data.frame(
+    year   = seq(2020, 2020 + settings[[i]]$sim_years-1),
+    catch  = catch_mean,
+    sd     = catch_sd
+  )
 
-biomass_df = data.frame(
-  mu    = colMeans(biomass_mat, na.rm = TRUE),
-  sigma = apply(biomass_mat, 2, sd)
-) %>%
-  mutate(phase = c(rep("Observed",49), rep("Simulated", settings$sim_years))) %>%
-  mutate(year = 1:(settings$sim_years + 49)+1972-1)
+  biomass_df_list[[i]] = biomass_df %>%
+    mutate(h = rep(h[i], nrow(biomass_df)))
+  
+  catch_df_list[[i]] = catch_df %>%
+    mutate(h = rep(h[i], nrow(catch_df)))
+  
+}
 
-# save dataframe output
-res_data_dir = file.path(here::here(), "res", "data", "dfs/")
-write.csv(biomass_df, file = paste(res_data_dir, "02_bycatch.csv"))
-
-# plot -------------------------------------------------------------------------
-Bmsy = 5542.576768
+# summarize
+biomass_df = do.call(rbind, biomass_df_list)
 
 biomass_df %>%
-  
-  ggplot(aes(x = year, y = mu)) +
-  geom_line(linewidth = 1.2, aes(color = phase)) +
-  geom_vline(xintercept = 2020.5, linewidth = 0.9, linetype = "dashed", color = "red") +
-  geom_hline(yintercept = Bmsy, linetype = "dashed") +
-  geom_ribbon(aes(ymin = mu - 4*sigma, ymax = mu + 4*sigma), alpha = 0.2) +
-  custom_theme() +
-  theme(legend.position = "none") +
-  xlab("Year") +
-  ylab("Biomass (t)") +
-  annotate(geom="text", x = 1977, y = 6000, label = "B[msy]", parse = TRUE) +
-  scale_color_manual(values = pnw_palette("Winter", 2)) +
-  labs(title = "Bycatch scenario")
+  group_by(as.factor(h)) %>%
+  summarise(
+    mean_biomass = mean(biomass),
+    sd_biomass   = sd(biomass)
+  )
 
-fig_dir = file.path(here::here(), "res", "figures")
-ggsave("bycatch.pdf", path = fig_dir)
+# rbind all biomass dataframes and mutate a h column
+biomass_df = do.call(rbind, biomass_df_list)
+biomass_df = biomass_df %>%
+  mutate(h = rep(h, each = nrow(biomass_df_list[[1]])))
+  
+biomass_df %>%
+  ggplot(aes(x = year, y = biomass, group = h, color = h)) +
+  geom_line() +
+  custom_theme() +
+  theme(legend.position = "right") +
+  geom_hline(yintercept = Bmsy, linetype = "dashed", color = "red") +
+  geom_vline(xintercept = 2020.5, linetype = "dashed", color = "black") +
+  annotate("text", x = 2000, y = 6400, label = "italic(B[msy])", parse = TRUE, color = "black") +
+  ylab("Biomass (t)") +
+  xlab("Year") +
+  ylim(0,11000) 
+
+pars = list(
+  r    = c(get.par("r", fit)[2], 0),
+  Fm   = c(0.02, 0),
+  Fmsy = c(get.par("Fmsyd", fit)[2], 0),
+  B    = c(3800, 10),
+  Bmsy = c(get.par("Bmsyd", fit)[2], 0)
+)
+
+ts = calc_rebuild_time(pars, uncertainty = TRUE, reps = 10000)
+median(ts, na.rm = TRUE)
+
+mean(calc_rebuild_time(pars, uncertainty = TRUE, reps = 100000), na.rm = TRUE)
+  
+# Calculate rebuilding times ---------------------------------------------------
+# This is preliminary, need to determine range of harvest rates
+
+h = seq(0.0001, 0.025, by = 0.00002)
+t.mu = rep(NA, length(h))
+t.sd = rep(NA, length(h))
+K = length(h)
+N = 1000
+
+for (k in 1:K) {
+  
+  pars = list(
+    r    = c(get.par("r", fit)[2], 0.02), # could be deterministic for r and K, vary biomass only?
+    Fm   = c(h[k], 0),
+    Fmsy = c(0.2, 0.001),
+    B    = c(biomass_df[51, 1], 200),
+    Bmsy = c(get.par("Bmsyd", fit)[2], 200)
+  )
+  
+  t.mu[k] = median(calc_rebuild_time(pars, uncertainty = TRUE, reps = N), na.rm = TRUE)
+  t.sd[k] = sd(calc_rebuild_time(pars, uncertainty = TRUE, reps = N), na.rm = TRUE)
+  
+}
+
+
+data.frame(
+  h,
+  t.mu,
+  t.sd
+) %>%
+  ggplot(aes(x = h, y = t.mu)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = t.mu - t.sd, ymax = t.mu + t.sd), alpha = 0.2) +
+  custom_theme() +
+  xlab("Harvest rate") +
+  ylab("Rebuilding time (years)") +
+  xlim(c(0, 0.025)) +
+  ylim(c(0,200))
+  
+
+
 

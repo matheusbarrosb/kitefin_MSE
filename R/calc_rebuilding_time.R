@@ -1,26 +1,26 @@
-calc_rebuild_time = function(pars, uncertainty = TRUE, reps = 10000) {
+calc_rebuild_time = function(pars, uncertainty = TRUE, reps = 10000, plot = FALSE) {
   
   if (uncertainty) {
     t = rep(NA, reps)
     for (i in 1:reps) {
       
-      r    = abs(rnorm(1, pars$r[1], pars$r[2]/1000))
-      Fm   = abs(rnorm(1, pars$Fm[1], pars$Fm[2]/1000))
-      Fmsy = abs(rnorm(1, pars$Fmsy[1], pars$Fmsy[2]/1000))
-      B    = abs(rnorm(1, pars$B[1], pars$B[2]/100))
-      Bmsy = abs(rnorm(1, pars$Bmsy[1], pars$Bmsy[2]/1000))
+      r    = abs(rnorm(1, pars$r[1], pars$r[2]))
+      Fm   = abs(rnorm(1, pars$Fm[1], pars$Fm[2]))
+      Fmsy = abs(rnorm(1, pars$Fmsy[1], pars$Fmsy[2]))
+      B    = abs(rnorm(1, pars$B[1], pars$B[2]))
+      Bmsy = abs(rnorm(1, pars$Bmsy[1], pars$Bmsy[2]))
       
       Bratio = B / Bmsy
       Fratio = Fm / Fmsy
       
-      denominator = 2 * (1 - Fratio / r) - 1
-      numerator = 2 * Bratio^-1 * (1 - Fratio / r) - 1
+      denominator = 2 * (1 - Fm / r) - 1
+      numerator = 2 * Bratio^-1 * (1 - Fm / r) - 1
       ratio = numerator / denominator
       
-      if ((r - Fratio) <= 0 || ratio <= 0) {
+      if ((r - Fm) <= 0) {
         t[i] = NA
       } else {
-        t[i] = 1 / (r - Fratio) * log(ratio)
+        t[i] = 1 / (r - Fm) * log(ratio)
       }
     }
   } else {
@@ -34,19 +34,17 @@ calc_rebuild_time = function(pars, uncertainty = TRUE, reps = 10000) {
     Bratio = B / Bmsy
     Fratio = Fm / Fmsy
     
-    denominator = 2 * (1 - Fratio / r) - 1
-    numerator = 2 * Bratio^-1 * (1 - Fratio / r) - 1
+    denominator = 2 * (1 - Fm / r) - 1
+    numerator = 2 * Bratio^-1 * (1 - Fm / r) - 1
     ratio = numerator / denominator
     
-    if ((r - Fratio) <= 0 || ratio <= 0) {
-      t = NA
-    } else {
-      t = 1 / (r - Fratio) * log(ratio)
-    }
+  t = (1 / (r - Fm))
   }
+  
+  
+  t = t[t>0]
 
-
-  plot(hist(t, breaks = 50, xlab = "Rebuild Time (years)", ylab = "Frequency"))
+  if (plot) plot(hist(t, breaks = 50, xlab = "Rebuild Time (years)", ylab = "Frequency"))
    
   return(t)
 }

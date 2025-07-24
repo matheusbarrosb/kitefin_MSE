@@ -79,6 +79,7 @@ message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sim
 res_data_dir = file.path(here::here(), "res", "data", "rds/")
 saveRDS(output, file = paste0(res_data_dir, "03_twostep.rds"))
 
+output = readRDS(file = paste0(res_data_dir, "03_twostep.rds"))
 # process output ---------------------------------------------------------------
 biomass_list = list()
 for (i in 1:n_sims) biomass_list[[i]] = output[[i]]$biomass$absolute_biomass

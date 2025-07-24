@@ -33,7 +33,7 @@ fit = fit.spict(input_data, verbose = TRUE, dbg = 0)
 plot(fit)
 
 # run --------------------------------------------------------------------------
-n_sims = 100
+n_sims = 10000
 
 thresholds = list(
   lower = 7000,     # irrelevant when h = 0
@@ -102,6 +102,7 @@ biomass_df %>%
   theme(legend.position = "none") +
   xlab("Year") +
   ylab("Biomass (t)") +
+  ylim(0,13500) +
   annotate(geom="text", x = 1977, y = 6000, label = "italic(B[msy])", parse = TRUE) +
   annotate(geom="text", x = 1977, y = 12600, label = "italic(K)", parse = TRUE) +
   scale_color_manual(values = pnw_palette("Winter", 2)) +
