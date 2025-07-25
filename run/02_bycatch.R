@@ -63,20 +63,63 @@ output_list = list() # this is the main aggregated output
 output = list() # for the internal loop over replicate simulations
 
 # run --------------------------------------------------------------------------
-for (k in 1:N_BCRs) {
+parallel = TRUE
+estimation = TRUE
 
+if (parallel) {
+  library(future.apply)
+  
+  n_cores <- parallel::detectCores() - 1
+  plan(multisession, workers = n_cores) # Use "multicore" instead if on Linux/Mac
+  
+  output_list <- list()
+  
+  for (k in 1:N_BCRs) {
+    settings[[k]] <- list(
+      formulation = "continuous",
+      sim_years   = sim_years,
+      par_list    = c("r", "K", "q", "m", "n", "sdb"),
+      thresholds  = thresholds[[k]],
+      max_harvest = Umsy, 
+      hcr_option  = option[k],
+      estimation  = estimation
+    )
+    
+    output <- future_lapply(1:n_sims, function(i) {
+      tryCatch({
+        run_simulation_2(
+          settings = settings[[k]],
+          data_directory = data_directory,
+          estimation = settings[[k]]$estimation,
+          base_model_fit = fit
+        )
+      }, error = function(e) {
+        message(paste("Error in simulation", i, ":", e$message))
+        NULL
+      })
+    })
+    
+    message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sims, "simulations successfully."))
+    
+    output_list[[k]] <- output
+    names(output_list)[k] <- paste0("h_", h[k])
+  }
+} else {
+
+for (k in 1:N_BCRs) {
+  
   settings[[k]] = list(formulation = "continuous",
                        sim_years   = sim_years,
                        par_list    = c("r", "K", "q", "m", "n", "sdb"),
                        thresholds  = thresholds[[k]],
                        max_harvest = Umsy, 
                        hcr_option  = option[k],
-                       estimation  = FALSE)
+                       estimation  = estimation)
   
   for (i in 1:n_sims) {
     
     output[[i]] = tryCatch({
-    
+      
       run_simulation_2(settings = settings[[k]], data_directory = data_directory, estimation = settings[[k]]$estimation, base_model_fit = fit)
       
     }, error = function(e) {
@@ -89,6 +132,8 @@ for (k in 1:N_BCRs) {
   }; message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sims, "simulations successfully."))
   
   output_list[[k]] = output; names(output_list)[k] = paste0("h_", NULL)
+  
+}
   
 }
 
