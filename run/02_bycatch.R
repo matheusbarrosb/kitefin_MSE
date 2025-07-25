@@ -21,43 +21,68 @@ for (i in 1:length(function_files)) {
   source(paste0(function_directory, function_files[i]))
 }
 
-# set up simulation ------------------------------------------------------------
-n_sims = 100
+# set up simulations -----------------------------------------------------------
+n_sims = 300
+sim_years = 75
 
-Bmsy = 5914.2806440
+# reference points
+Bmsy = get.par("Bmsys", fit)[2];print(paste0("Bmsy = ", Bmsy))
+Fmsy = get.par("Fmsys", fit)[2];print(paste0("Fmsy = ", Fmsy))
+Umsy = 1 - exp(-Fmsy)
 
-lwr = Bmsy
-upr = 1.5*Bmsy
+# setup BCR settings
+BCR_type = rep(c("Standard", "Precautionary", "Hyper-precautionary"), 2)
+BCR_cat  = c(rep("Two_step", 3), rep("Three_step", 3))
+BCRs     = paste0(BCR_type, "_", BCR_cat)
+N_BCRs   = length(BCRs)
+option   = c(rep("1", N_BCRs/2), rep("2", N_BCRs/2))
 
-thresholds = list(
-  lower = lwr,
-  upper = upr 
-)
+# add constant
+BCRs     = c(BCRs, "Constant")
+BCR_cat  = c(BCR_cat, "Constant")
+option   = c(option, "2")
+N_BCRs   = length(BCRs) # increment
 
-h = as.numeric(seq(0.005, 0.05, by = 0.005))
+# setup thresholds
+lwr = rep(0.5*Bmsy, K) # 20% of K
+mid = c(NA, NA, NA, Bmsy, 1.25*Bmsy, 1.5*Bmsy)
+upr = c(Bmsy, 1.25*Bmsy, 1.5*Bmsy, 1.5*Bmsy, 1.75*Bmsy, 2*Bmsy)
+
+thresholds = list()
+for (i in 1:N_BCRs) {
+  if (BCR_cat[i] == "Two_step") {
+    thresholds[[i]] = list(lower = lwr[i], upper = upr[i])
+  } else if (BCR_cat[i] == "Three_step") {
+    thresholds[[i]] = list(lower = lwr[i], middle = mid[i], upper = upr[i])
+  }
+};thresholds[[N_BCRs]] = list(lower = Bmsy)
+
+# allocate containers
 settings = list()
-output_list = list()
-output = list()
-for (k in 1:length(h)) {
+output_list = list() # this is the main aggregated output
+output = list() # for the internal loop over replicate simulations
+
+# run --------------------------------------------------------------------------
+for (k in 1:N_BCRs) {
 
   settings[[k]] = list(formulation = "continuous",
-                       sim_years   = 75,
+                       sim_years   = sim_years,
                        par_list    = c("r", "K", "q", "m", "n", "sdb"),
-                       thresholds  = thresholds,
-                       max_harvest = h[k], 
-                       hcr_option  = "1",
+                       thresholds  = thresholds[[k]],
+                       max_harvest = Umsy, 
+                       hcr_option  = option[k],
                        estimation  = FALSE)
   
   for (i in 1:n_sims) {
     
     output[[i]] = tryCatch({
-      
+    
       run_simulation_2(settings = settings[[k]], data_directory = data_directory, estimation = settings[[k]]$estimation, base_model_fit = fit)
       
     }, error = function(e) {
       
       message(paste("Error in simulation", i, ":", e$message))
-      
+      NULL
     }
     )
     
@@ -67,9 +92,10 @@ for (k in 1:length(h)) {
   
 }
 
+# end of simulations -----------------------------------------------------------
 # save .rds file
 res_data_dir = file.path(here::here(), "res", "data", "rds/")
-saveRDS(output_list, file = paste0(res_data_dir, "bycatch_dt.rds"))
+saveRDS(output_list, file = paste0(res_data_dir, "bycatch.rds"))
 
 # process output ---------------------------------------------------------------
 if (!exists("output_list")) {
@@ -79,7 +105,7 @@ if (!exists("output_list")) {
 
 biomass_df_list = list()
 catch_df_list   = list()
-for (i in 1:length(output_list)) {
+for (i in 1:N_BCRs) {
   biomass      = lapply(output_list[[i]], function(x) x$biomass$absolute_biomass)
   biomass_mat  = do.call(rbind, biomass)
   biomass_mean = apply(biomass_mat, 2, mean)
@@ -101,12 +127,12 @@ for (i in 1:length(output_list)) {
     catch  = catch_mean,
     sd     = catch_sd
   )
-
+  
   biomass_df_list[[i]] = biomass_df %>%
-    mutate(h = rep(h[i], nrow(biomass_df)))
+    mutate(h = rep(BCRs[i], nrow(biomass_df)))
   
   catch_df_list[[i]] = catch_df %>%
-    mutate(h = rep(h[i], nrow(catch_df)))
+    mutate(h = rep(BCRs[i], nrow(catch_df)))
   
 }
 
@@ -116,15 +142,11 @@ biomass_df = do.call(rbind, biomass_df_list)
 biomass_df %>%
   group_by(as.factor(h)) %>%
   summarise(
-    mean_biomass = mean(biomass),
+    mean_biomass = mean(biomass, na.rm = TRUE),
     sd_biomass   = sd(biomass)
-  )
+  ) %>%
+  arrange(mean_biomass)
 
-# rbind all biomass dataframes and mutate a h column
-biomass_df = do.call(rbind, biomass_df_list)
-biomass_df = biomass_df %>%
-  mutate(h = rep(h, each = nrow(biomass_df_list[[1]])))
-  
 biomass_df %>%
   ggplot(aes(x = year, y = biomass, group = h, color = h)) +
   geom_line() +
@@ -137,58 +159,4 @@ biomass_df %>%
   xlab("Year") +
   ylim(0,11000) 
 
-pars = list(
-  r    = c(get.par("r", fit)[2], 0),
-  Fm   = c(0.02, 0),
-  Fmsy = c(get.par("Fmsyd", fit)[2], 0),
-  B    = c(3800, 10),
-  Bmsy = c(get.par("Bmsyd", fit)[2], 0)
-)
-
-ts = calc_rebuild_time(pars, uncertainty = TRUE, reps = 10000)
-median(ts, na.rm = TRUE)
-
-mean(calc_rebuild_time(pars, uncertainty = TRUE, reps = 100000), na.rm = TRUE)
-  
-# Calculate rebuilding times ---------------------------------------------------
-# This is preliminary, need to determine range of harvest rates
-
-h = seq(0.0001, 0.025, by = 0.00002)
-t.mu = rep(NA, length(h))
-t.sd = rep(NA, length(h))
-K = length(h)
-N = 1000
-
-for (k in 1:K) {
-  
-  pars = list(
-    r    = c(get.par("r", fit)[2], 0.02), # could be deterministic for r and K, vary biomass only?
-    Fm   = c(h[k], 0),
-    Fmsy = c(0.2, 0.001),
-    B    = c(biomass_df[51, 1], 200),
-    Bmsy = c(get.par("Bmsyd", fit)[2], 200)
-  )
-  
-  t.mu[k] = median(calc_rebuild_time(pars, uncertainty = TRUE, reps = N), na.rm = TRUE)
-  t.sd[k] = sd(calc_rebuild_time(pars, uncertainty = TRUE, reps = N), na.rm = TRUE)
-  
-}
-
-
-data.frame(
-  h,
-  t.mu,
-  t.sd
-) %>%
-  ggplot(aes(x = h, y = t.mu)) +
-  geom_line() +
-  geom_ribbon(aes(ymin = t.mu - t.sd, ymax = t.mu + t.sd), alpha = 0.2) +
-  custom_theme() +
-  xlab("Harvest rate") +
-  ylab("Rebuilding time (years)") +
-  xlim(c(0, 0.025)) +
-  ylim(c(0,200))
-  
-
-
-
+ggsave("biomass_bycatch.pdf", path = fig_dir)

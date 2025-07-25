@@ -30,6 +30,8 @@ get_catch = function(curr_biomass, hcr_option, thresholds, max_harvest) {
       h = 0
     } else if (b >= thresholds$lower && b < thresholds$middle) {
       h = ((b - thresholds$lower)/(thresholds$upper - thresholds$lower))*max_harvest
+    } else {
+      h = max_harvest
     }
       
   } 

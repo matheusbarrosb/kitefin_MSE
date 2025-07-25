@@ -33,10 +33,10 @@ fit = fit.spict(input_data, verbose = TRUE, dbg = 0)
 plot(fit)
 
 # run --------------------------------------------------------------------------
-n_sims = 10000
+n_sims = 100
 
 thresholds = list(
-  lower = 7000,     # irrelevant when h = 0
+  lower = 2500,     # irrelevant when h = 0
   upper = 12000
 )
 
@@ -44,7 +44,7 @@ settings = list(formulation = "continuous",
                 sim_years   = 75,
                 par_list    = c("r", "K", "q", "m", "n", "sdb"),
                 thresholds  = thresholds,
-                max_harvest = 0,
+                max_harvest = 0.03,
                 hcr_option  = "1",
                 estimation  = FALSE)
 
