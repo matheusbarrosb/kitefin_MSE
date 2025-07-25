@@ -44,7 +44,7 @@ option   = c(option, "2")
 N_BCRs   = length(BCRs) # increment
 
 # setup thresholds
-lwr = rep(0.5*Bmsy, K) # 20% of K
+lwr = rep(0.5*Bmsy, N_BCRs) # 20% of K
 mid = c(NA, NA, NA, Bmsy, 1.25*Bmsy, 1.5*Bmsy)
 upr = c(Bmsy, 1.25*Bmsy, 1.5*Bmsy, 1.5*Bmsy, 1.75*Bmsy, 2*Bmsy)
 
