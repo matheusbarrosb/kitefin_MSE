@@ -88,7 +88,7 @@ for (k in 1:N_BCRs) {
     
   }; message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sims, "simulations successfully."))
   
-  output_list[[k]] = output; names(output_list)[k] = paste0("h_", h[k])
+  output_list[[k]] = output; names(output_list)[k] = paste0("h_", NULL)
   
 }
 
