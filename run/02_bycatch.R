@@ -63,8 +63,8 @@ output_list = list() # this is the main aggregated output
 output = list() # for the internal loop over replicate simulations
 
 # run --------------------------------------------------------------------------
-parallel = TRUE
-estimation = TRUE
+parallel = FALSE
+estimation = FALSE
 
 if (parallel) {
   library(future.apply)
@@ -106,34 +106,34 @@ if (parallel) {
   }
 } else {
 
-for (k in 1:N_BCRs) {
-  
-  settings[[k]] = list(formulation = "continuous",
-                       sim_years   = sim_years,
-                       par_list    = c("r", "K", "q", "m", "n", "sdb"),
-                       thresholds  = thresholds[[k]],
-                       max_harvest = Umsy, 
-                       hcr_option  = option[k],
-                       estimation  = estimation)
-  
-  for (i in 1:n_sims) {
+  for (k in 1:N_BCRs) {
     
-    output[[i]] = tryCatch({
-      
-      run_simulation_2(settings = settings[[k]], data_directory = data_directory, estimation = settings[[k]]$estimation, base_model_fit = fit)
-      
-    }, error = function(e) {
-      
-      message(paste("Error in simulation", i, ":", e$message))
-      NULL
-    }
-    )
+    settings[[k]] = list(formulation = "continuous",
+                         sim_years   = sim_years,
+                         par_list    = c("r", "K", "q", "m", "n", "sdb"),
+                         thresholds  = thresholds[[k]],
+                         max_harvest = Umsy, 
+                         hcr_option  = option[k],
+                         estimation  = estimation)
     
-  }; message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sims, "simulations successfully."))
-  
-  output_list[[k]] = output; names(output_list)[k] = paste0("h_", NULL)
-  
-}
+    for (i in 1:n_sims) {
+      
+      output[[i]] = tryCatch({
+        
+        run_simulation_2(settings = settings[[k]], data_directory = data_directory, estimation = settings[[k]]$estimation, base_model_fit = fit)
+        
+      }, error = function(e) {
+        
+        message(paste("Error in simulation", i, ":", e$message))
+        NULL
+      }
+      )
+      
+    }; message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sims, "simulations successfully."))
+    
+    output_list[[k]] = output; names(output_list)[k] = paste0("h_", NULL)
+    
+  }
   
 }
 
@@ -145,8 +145,10 @@ saveRDS(output_list, file = paste0(res_data_dir, "bycatch.rds"))
 # process output ---------------------------------------------------------------
 if (!exists("output_list")) {
   res_data_dir = file.path(here::here(), "res", "data", "rds/")
-  output_list  = readRDS(file = paste0(res_data_dir, "bycatch_dt.rds"))
+  output_list  = readRDS(file = paste0(res_data_dir, "bycatch.rds"))
 }
+
+#output_list  = readRDS(file = paste0(res_data_dir, "bycatch.rds"))
 
 biomass_df_list = list()
 catch_df_list   = list()
@@ -162,13 +164,13 @@ for (i in 1:N_BCRs) {
   catch_sd    = apply(catch_mat, 2, sd)
   
   biomass_df = data.frame(
-    year    = seq(1972, 2020 + settings[[i]]$sim_years),
+    year    = seq(1972, 2020 + sim_years),
     biomass = biomass_mean,
     sd      = biomass_sd
   )
   
   catch_df = data.frame(
-    year   = seq(2020, 2020 + settings[[i]]$sim_years-1),
+    year   = seq(2020, 2020 + sim_years-1),
     catch  = catch_mean,
     sd     = catch_sd
   )
@@ -205,3 +207,4 @@ biomass_df %>%
   ylim(0,11000) 
 
 ggsave("biomass_bycatch.pdf", path = fig_dir)
+
