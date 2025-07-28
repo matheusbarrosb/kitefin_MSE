@@ -22,7 +22,7 @@ for (i in 1:length(function_files)) {
 }
 
 # set up simulations -----------------------------------------------------------
-n_sims = 300
+n_sims = 10
 sim_years = 75
 
 # reference points
@@ -35,7 +35,7 @@ BCR_type = rep(c("Standard", "Precautionary", "Hyper-precautionary"), 2)
 BCR_cat  = c(rep("Two_step", 3), rep("Three_step", 3))
 BCRs     = paste0(BCR_type, "_", BCR_cat)
 N_BCRs   = length(BCRs)
-option   = c(rep("1", N_BCRs/2), rep("2", N_BCRs/2))
+option   = c(rep("1", N_BCRs/2), rep("3", N_BCRs/2))
 
 # add constant
 BCRs     = c(BCRs, "Constant")
@@ -56,6 +56,14 @@ for (i in 1:N_BCRs) {
     thresholds[[i]] = list(lower = lwr[i], middle = mid[i], upper = upr[i])
   }
 };thresholds[[N_BCRs]] = list(lower = Bmsy)
+names(thresholds) = BCRs
+
+palette = "Bay"
+
+plot_BCRs(thresholds, BCRs, Umsy, ncol = 2, palette)
+
+fig_dir = file.path(here::here(), "res", "figures")
+ggsave("BCRs.pdf", path = fig_dir)
 
 # allocate containers
 settings = list()
@@ -69,10 +77,10 @@ estimation = FALSE
 if (parallel) {
   library(future.apply)
   
-  n_cores <- parallel::detectCores() - 1
+  n_cores = parallel::detectCores() - 1
   plan(multisession, workers = n_cores) # Use "multicore" instead if on Linux/Mac
   
-  output_list <- list()
+  output_list = list()
   
   for (k in 1:N_BCRs) {
     settings[[k]] <- list(
@@ -101,8 +109,8 @@ if (parallel) {
     
     message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sims, "simulations successfully."))
     
-    output_list[[k]] <- output
-    names(output_list)[k] <- paste0("h_", h[k])
+    output_list[[k]] = output
+    
   }
 } else {
 
@@ -131,13 +139,12 @@ if (parallel) {
       
     }; message(paste("Completed", sum(sapply(output, Negate(is.null))), "out of", n_sims, "simulations successfully."))
     
-    output_list[[k]] = output; names(output_list)[k] = paste0("h_", NULL)
+    output_list[[k]] = output
     
-  }
+  }; names(output_list) = paste0(BCRs)
   
-}
+} # end of simulations -----------------------------------------------------------
 
-# end of simulations -----------------------------------------------------------
 # save .rds file
 res_data_dir = file.path(here::here(), "res", "data", "rds/")
 saveRDS(output_list, file = paste0(res_data_dir, "bycatch.rds"))
@@ -147,8 +154,6 @@ if (!exists("output_list")) {
   res_data_dir = file.path(here::here(), "res", "data", "rds/")
   output_list  = readRDS(file = paste0(res_data_dir, "bycatch.rds"))
 }
-
-#output_list  = readRDS(file = paste0(res_data_dir, "bycatch.rds"))
 
 biomass_df_list = list()
 catch_df_list   = list()
@@ -183,7 +188,7 @@ for (i in 1:N_BCRs) {
   
 }
 
-# summarize
+# summarize --------------------------------------------------------------------
 biomass_df = do.call(rbind, biomass_df_list)
 
 biomass_df %>%
@@ -195,16 +200,21 @@ biomass_df %>%
   arrange(mean_biomass)
 
 biomass_df %>%
-  ggplot(aes(x = year, y = biomass, group = h, color = h)) +
-  geom_line() +
+  ggplot(aes(x = year, y = biomass/1000, group = h)) +
+  geom_line(aes(color = h)) +
+  geom_ribbon(aes(ymin = biomass/1000 - 4*sd/1000, ymax = biomass/1000 + 4*sd/1000, fill = h), alpha = 0.4) +
   custom_theme() +
+  scale_color_manual(values = pnw_palette("Bay", n = N_BCRs, type = "continuous")) +
+  scale_fill_manual(values = pnw_palette("Bay", n = N_BCRs, type = "continuous")) +
+  facet_wrap(~ h, ncol = 2) +
   theme(legend.position = "right") +
-  geom_hline(yintercept = Bmsy, linetype = "dashed", color = "red") +
+  geom_hline(yintercept = Bmsy/1000, linetype = "dashed", color = "red") +
   geom_vline(xintercept = 2020.5, linetype = "dashed", color = "black") +
-  annotate("text", x = 2000, y = 6400, label = "italic(B[msy])", parse = TRUE, color = "black") +
-  ylab("Biomass (t)") +
+  annotate("text", x = 2000, y = 6400/1000, label = "italic(B[msy])", parse = TRUE, color = "black") +
+  theme(legend.position = "none") +
+  ylab("Biomass (1000s of tonnes)") +
   xlab("Year") +
-  ylim(0,11000) 
+  ylim(0,12) 
 
 ggsave("biomass_bycatch.pdf", path = fig_dir)
 

@@ -17,7 +17,6 @@ get_catch = function(curr_biomass, hcr_option, thresholds, max_harvest) {
     }
     
   } else if (hcr_option == "2") {
-    message("Option 2 selected. Using a fixed harvest rate and a lower limit")
     # no linear scaling
     if (b <= thresholds$lower) {
       h = 0
@@ -29,15 +28,18 @@ get_catch = function(curr_biomass, hcr_option, thresholds, max_harvest) {
     if (is.null(thresholds$lower) || is.null(thresholds$middle) || is.null(thresholds$upper)) {
       stop("For hcr_option 3, thresholds must include lower, middle, and upper values.")
     }
+    
+    plateau_harvest = ((thresholds$middle - thresholds$lower)/(thresholds$upper - thresholds$lower)) * max_harvest
     if (b < thresholds$lower) {
       h = 0
     } else if (b >= thresholds$lower && b < thresholds$middle) {
-      h = ((b - thresholds$lower)/(thresholds$middle - thresholds$lower))*max_harvest
+      h = ((b - thresholds$lower) / (thresholds$middle - thresholds$lower)) * plateau_harvest
     } else if (b >= thresholds$middle && b < thresholds$upper) {
-      h = ((b - thresholds$middle)/(thresholds$upper - thresholds$middle))*max_harvest
+      h = plateau_harvest
     } else if (b >= thresholds$upper) {
       h = max_harvest
     }
+
   } 
   
   else {
