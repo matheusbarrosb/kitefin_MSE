@@ -51,6 +51,8 @@ plot_BCRs = function(thresholds_list, bcr_names, max_harvest, ncol, palette) {
     bcr_data = rbind(bcr_data, data.frame(Biomass = b_vals, HarvestRate = h_vals, BCR = bcr_name)) # hcr_data
   }
   
+  bcr_data$BCR = gsub("_", " ", bcr_data$BCR)
+  
   ggplot(bcr_data, aes(x = Biomass/1000, y = HarvestRate, color = BCR)) +
     geom_line(size = 1.5) +
     scale_color_manual(values = pnw_palette(palette, n = length(bcr_names), type = "continuous")) +
