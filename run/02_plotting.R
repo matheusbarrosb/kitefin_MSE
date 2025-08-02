@@ -1,3 +1,4 @@
+# this script requires the output from run/01_bycatch.R #
 # load simulation data ---------------------------------------------------------
 res_data_dir = file.path(here::here(), "res", "data", "rds/")
 output_list  = readRDS(file = paste0(res_data_dir, "bycatch.rds"))
@@ -48,6 +49,7 @@ biomass_df %>%
   arrange(mean_biomass)
 
 # plot -------------------------------------------------------------------------
+fig_dir = file.path(here::here(), "res", "figures")
 
 ### biomass trajectories ##$
 biomass_df %>%
@@ -150,3 +152,31 @@ catch_df %>%
   theme(legend.position = "none")
 
 ggsave("proportion_closed_bycatch.pdf", path = fig_dir)
+
+### proportion of years above Bmsy ###
+col = pnw_palette("Bay", n = N_BCRs, type = "continuous")[3]
+
+biomass_df %>%
+  filter(year > 2021) %>%
+  group_by(h) %>%
+  mutate(h = gsub("_", " ", h)) %>%
+  summarise(
+    above_Bmsy = sum(biomass > Bmsy, na.rm = TRUE),
+    sd_proportion = sd(biomass > Bmsy, na.rm = TRUE)/sqrt(n()),
+    total_years = n(),
+    proportion_above_Bmsy = above_Bmsy / total_years
+  ) %>%
+  arrange(proportion_above_Bmsy) %>%
+  ggplot(aes(x = reorder(h, proportion_above_Bmsy), y = proportion_above_Bmsy)) +
+  geom_bar(stat = "identity", fill = col, color = "black") +
+  geom_point(size = 3, shape = 1, color = "black", fill = "black") +
+  geom_errorbar(aes(ymin = proportion_above_Bmsy - sd_proportion, ymax = proportion_above_Bmsy + sd_proportion), width = 0.2) +
+  custom_theme() +
+  xlab("") +
+  ylab("Proportion of Years Above B[msy]") +
+  coord_flip() +
+  theme(legend.position = "none") +
+  ylim(0, 1)
+
+ggsave("proportion_above_Bmsy.pdf", path = fig_dir)
+

@@ -30,7 +30,6 @@ input_data     = make_input_data(data_directory = data_directory)
 # fit
 fit = fit.spict(input_data, verbose = TRUE, dbg = 0);plot(fit)
 
-
 # reference points
 Bmsy = get.par("Bmsys", fit)[2];print(paste0("Bmsy = ", Bmsy))
 Fmsy = get.par("Fmsys", fit)[2];print(paste0("Fmsy = ", Fmsy))
